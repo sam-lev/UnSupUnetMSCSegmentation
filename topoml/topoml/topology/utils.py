@@ -11,6 +11,7 @@ from sklearn.cluster import KMeans
 from topoml.image.utils import blur_and_save
 from topoml.ml.utils import gaussian_fit
 from topoml.topology.msc import MSC
+from topoml.topology.geometric_msc import GeoMSC
 from topoml.ui.vis import show_image
 from topoml.ui.colors import blue
 
@@ -126,6 +127,54 @@ def filtered_msc_training_set(filtered_images, kernel_size, persistence=8.5):
     return train_x, train_y, gaussian_msc_arc_X, gaussian_msc_arc_Y
 
 
+def build_geometric_msc(raw_filename, width, height, persistence=0):
+    """Calls Attila's C++ code using subprocess
+
+       TODO:
+       Dan: write a proper swig or python interface to Attila's code
+
+    Keyword arguments:
+        raw_filename -- a string representing the anme of the image file
+        in raw format
+        width -- The width of the image
+        height --  The height of the image
+        persistence -- a floatint point value specifying the persistence
+        to use
+
+    Returns:
+        MSC: An msc object
+    """
+    # TODO: this works for me specifically because of where I installed things,
+    # the default is to start from root which could take a potentially long time.
+    # Hard-code your own path here for now if your libraries are not installed
+    # side-by-side.
+    # Path to GradIntegrator/build/extract2dridgegraph/extract2dridgegraph
+    starting_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..","..")
+    proc = subprocess.Popen(
+        [   os.path.join('.',starting_dir
+                         ,"GradIntegrator"
+                         ,"build"
+                         ,"extract2dridgegraph"
+                         ,"extract2dridgegraph"),
+            raw_filename,
+            str(width),
+            str(height),
+            str(persistence),
+        ],
+        shell=False,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    stdout, stderr = proc.communicate()
+    # print(stdout.decode("utf-8"))
+    # print(stderr.decode("utf-8"))
+    # Geomtric MSC
+    msc = GeoMSC()
+    msc.read_from_file(raw_filename)
+    return msc
+
 def build_msc(raw_filename, width, height, persistence=0):
     """Calls Attila's C++ code using subprocess
 
@@ -170,7 +219,6 @@ def build_msc(raw_filename, width, height, persistence=0):
     msc = MSC()
     msc.read_from_file(raw_filename)
     return msc
-
 
 def msc_filtration(image, msc, mu):
     # store arcs containing pixel values above mean of gaussian fit to

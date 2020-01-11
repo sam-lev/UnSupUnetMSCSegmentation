@@ -7,18 +7,19 @@ from skimage import io
 
 # Local application imports
 from topoml.topology.utils import build_msc
+from topoml.topology.utils import build_geometric_msc
 from topoml.ui.ArcSelector import ArcSelector
 from topoml.image.utils import blur_and_save
 
 
 class NeuronTracer(ABC):
-    def __init__(self, fname=None, blur_sigma=2, persistence=0, construct_msc = True):
+    def __init__(self, fname=None, blur_sigma=2, persistence=0, construct_msc = True, geometric_msc = False):
         self.compiled_features = None
         self.feature_names = None
 
         
 
-        if construct_msc:
+        if construct_msc or geometric_msc:
             self.raw_image = io.imread(fname, as_gray=True)
             self.image, fname_raw = blur_and_save(
                 self.raw_image, fname.rsplit(".", 1)[0], blur_sigma
@@ -33,17 +34,25 @@ class NeuronTracer(ABC):
 
         self.foreground_arcs = set()
         self.background_arcs = set()
-
-        if construct_msc:
+        
+        # construct either purely topological MSC
+        # or geometric MSC with vertices added at edge intersections
+        # of saddles e.g. not only min/max
+        if construct_msc and not geometric_msc:
             self.msc = build_msc(
                 fname_raw, self.image.shape[1], self.image.shape[0], persistence
             )
-
+            self._add_default_features()
+            self._add_default_models()
+        elif geometric_msc:
+            self.msc = build_geometric_msc(
+                fname_raw, self.image.shape[1], self.image.shape[0], persistence
+            )
             self._add_default_features()
             self._add_default_models()
         else:
             self.msc = None
-
+        
         self.positive_arcs = []
         self.negative_arcs = []
 

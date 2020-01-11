@@ -491,6 +491,109 @@ class ArcNeuronTracer(NeuronTracer):
             self.dual = G
         return self.dual.copy()
 
+    def filter_with_ground_truth(self, in_arcs, out_arcs, gt_in_arcs, gt_out_arcs,label_scheme = 'train', val_count=20, val_in_arcs=None, val_out_arcs=None):
+        if not gt_in_arcs:
+            gt_in_arcs = in_arcs
+            gt_out_arcs = out_arcs
+        
+        selected_indices = set()
+        background_indices = set()
+        gt_pos_indices = set()
+        gt_neg_indices = set()
+        val_pos_indices = set()
+        val_neg_indices = set()
+
+        for arc in in_arcs:
+            selected_indices.add(arc)
+        for arc in out_arcs:
+            background_indices.add(arc)
+        cvt_indices = in_arcs.union( out_arcs )
+
+        for arc in gt_in_arcs:
+            gt_pos_indices.add(arc)
+        for arc in gt_out_arcs:
+            gt_neg_indices.add(arc)
+
+        for arc in val_in_arcs:
+            val_pos_indices.add(arc)
+        for arc in val_out_arcs:
+            val_neg_indices.add(arc)
+        val_set = val_pos_indices.union( val_neg_indices )
+            
+            
+        compiled_data = self.compile_features()
+
+        node_map = {}
+        G = self.construct_dual_graph()
+
+        current_arc_id = 0
+        node_ids = {}
+        node_labels = {}
+
+        i_val = 0 ##!!!! need to set size for val set
+        
+        for arc, features in zip(self.arcs, compiled_data):
+            index = tuple(arc.node_ids) + (len(arc.line),)
+            for node_id in arc.node_ids:
+                #
+                # !! need to fix here to accomadate only ascending ridges
+                #
+                if node_id not in node_map:
+                    node_map[node_id] = []
+                node_map[node_id].append(current_arc_id)
+
+                label = [
+                    int(index in gt_neg_indices),
+                    int(index in gt_pos_indices),
+                ]
+
+                node = G.node[current_arc_id]
+                node["index"] = arc.node_ids
+                node["size"] = len(arc.line)
+                node["features"] = features.tolist()
+                
+                # labeled nodes assigned as train, test, or val
+                if bool(np.sum(label)):
+                    modified = 0
+                    if index in cvt_indices:# and  i_val < val_count:
+                        modified=1
+                        node["train"] = True
+                        node["test"] = False
+                        node["val"] = False
+                    if index in val_set:
+                        modified=1
+                        node["train"] = False
+                        node["test"] = False
+                        node["val"] = True
+                    elif not bool(modified):
+                        node["test"] = True
+                        node["val"] = False
+                        node["train"] = False
+                    
+                """Label all non-selected arcs as test"""
+                #if not  bool(np.sum(label)):
+                    #node["test"] = True
+                    
+                if bool(np.sum(label)):
+                    node["label"] = label
+                    node["prediction"] = None
+                #G.node[current_arc_id] = node
+                
+                #current_arc_id += 1
+                node_ids[current_arc_id] = current_arc_id
+                node_labels[current_arc_id] = label
+            current_arc_id += 1
+        
+        for arc_id, arc in list(G.nodes_iter(data=True)):#G.nodes.items():
+            for node_id in arc["index"]:
+                for connected_arc_id in node_map[node_id]:
+                    G.add_edge(arc_id, connected_arc_id)
+
+        data1 = json_graph.node_link_data(G) 
+        s1 = json.dumps(data1) # input graph
+        s2 = json.dumps(node_ids) #  dict: nodes to ints
+        s3 = json.dumps(node_labels) #  dict: node_id to class
+        
     def create_graphsage_input(self, in_arcs, out_arcs, gt_in_arcs, gt_out_arcs,label_scheme = 'train', val_count=20, val_in_arcs=None, val_out_arcs=None):
         """ Creates the necessary input data structures for GraphSage's
             GNN implementation.

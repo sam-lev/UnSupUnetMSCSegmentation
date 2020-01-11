@@ -32,7 +32,7 @@ def make_arc_id(a):
 
 class ArcSelector(object):
     def __init__(
-        self, image, msc, selection_radius=10, valley=True, ridge=True
+            self, image, msc, selection_radius=10, valley=True, ridge=True, invert=False, kdtree=False
     ):
         # Needed for kdTree on large point sets:
         sys.setrecursionlimit(10000)
@@ -40,11 +40,13 @@ class ArcSelector(object):
         self.image = image
         self.msc = msc
         self.msc.arcs = msc.arcs
+
+        self.invert = invert
         
         self.selection_radius = selection_radius
         self.selection_shape = morphology.disk(self.selection_radius)
         self.fat_mask = make_dilated_arc_image(
-            self.image, self.msc, self.selection_radius
+            self.image, self.msc, self.selection_radius, self.invert
         )
 
         self.in_color = orange
@@ -71,7 +73,11 @@ class ArcSelector(object):
             arc_points.extend(arc.line)
             self.arc_map.extend([index] * len(arc.line))
             self.arcs.append(arc)
-        self.kdtree = scipy.spatial.KDTree(arc_points, leafsize=1000)
+        # only needed for selection ui to choose neighboring arcs
+        # can cause error with sparse MSC
+        self.kdtree = None
+        if kdtree:
+            self.kdtree = scipy.spatial.KDTree(arc_points, leafsize=1000)
 
     def get_closest_arc_index(self, point):
         distance, index = self.kdtree.query(point)
@@ -270,11 +276,11 @@ class ArcSelector(object):
         ax.imshow(image_in, aspect='equal')
         plt.savefig(outputname, dpi=dpi)
 
-    def draw_binary_segmentation(self, filename, msc = None):
+    def draw_binary_segmentation(self, filename, msc = None, invert=False, reshape_out = True, dpi = True):
         if not msc:
             self.msc = msc
         
-        black_box = np.zeros((self.image.shape[0],self.image.shape[1]))
+        black_box = np.zeros((self.image.shape[0],self.image.shape[1])) if not invert else np.zeros((self.image.shape[1],self.image.shape[0]))
         #print(self.image.shape+(,,3))
         fig = plt.imshow(black_box,cmap='gray', alpha=None,interpolation = 'nearest') #plt.figure() #in
         plt.axis('off')
@@ -315,7 +321,7 @@ class ArcSelector(object):
                 arc_drawings[arc_index].set_visible(True)
 
         if self.use_ridge_arcs:
-            arc_mask = make_mc_arc_mask(self.image, self.msc, False)
+            arc_mask = make_mc_arc_mask(self.image, self.msc, invert)#False)
             plt.imshow(
                 arc_mask,
                 cmap="binary",
@@ -327,7 +333,7 @@ class ArcSelector(object):
                 zorder=2,
             )
         if self.use_valley_arcs:
-            arc_mask = make_mc_arc_mask(self.image, self.msc, True)
+            arc_mask = make_mc_arc_mask(self.image, self.msc, invert)#True)
             plt.imshow(
                 arc_mask,
                 cmap="binary",
@@ -359,18 +365,26 @@ class ArcSelector(object):
         #plt.gca().set_axis_off()
         #plt.gca().set_xlim(0, self.image.shape[0])
         #plt.gca().set_ylim(self.image.shape[1], 0)
-        if self.image.shape[0] >= 600:
-            dpi_ = 600
-        else:
-            dpi_ = 156
+        dpi_ = None
+        if dpi:
+            if self.image.shape[0] >= 600:
+                dpi_ = 600
+            else:
+                dpi_ = 156
+            if isinstance(dpi, int):
+                dpi_ = dpi
+        
         plt.savefig(filename, bbox_inches='tight', pad_inches = 0.0, dpi = dpi_, transparent = False, cmap=None)
 
         img = imageio.imread(filename)
-        if self.image.shape[0] >= 600:
-            img = Image.fromarray(img).resize((img.shape[1]+9, img.shape[1]-91+5))
-        else:
-            img = Image.fromarray(img).resize((img.shape[1]+1, img.shape[0]+1))
         
+        if reshape_out:
+            if self.image.shape[0] >= 600:
+                img = Image.fromarray(img).resize((img.shape[1]+9, img.shape[1]-91+5))
+            else:
+                img = Image.fromarray(img).resize((img.shape[1]+1, img.shape[0]+1))
+        else:
+            img = Image.fromarray(img).resize((img.shape[1]+1, img.shape[0]+1)) #if not invert else Image.fromarray(img).resize((img.shape[0], img.shape[1]))
         img = np.array(img)[:,:,0]
         Img = Image.fromarray(img)
         Img.save(filename)

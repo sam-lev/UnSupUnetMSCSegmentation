@@ -125,7 +125,7 @@ def maximum_filter(image, radius=1):
     return ndimage.maximum_filter(image, footprint=mask)
 
 
-def gaussian_blur_filter(image, sigma=2):
+def gaussian_blur_filter(image, sigma=2, as_grey=True):
     """Computes a gaussian blur over the original image with a scale
     parameter specified by sigma.
 
@@ -139,7 +139,7 @@ def gaussian_blur_filter(image, sigma=2):
         ndarray: an image that is the same size as the original image
         representing a blurred version of the original image.
     """
-    return filters.gaussian(image, sigma=sigma, multichannel=False)
+    return filters.gaussian(image, sigma=sigma, multichannel= not as_grey)
 
 
 def difference_of_gaussians_filter(image, sigma1, sigma2):
