@@ -43,6 +43,14 @@ class GeoMSC:
     def __init__(self):
         self.nodes = {}
         self.arcs = []
+        # false positive arcs/nodes
+        # true positive arcs/nodes
+        self.fp_arcs = []
+        self.tp_arcs = []
+        self.fp_nodes = {}
+        self.tp_nodes = {}
+        # arcs with overlap of true positive and false positive segmentation
+        self.tf_arcs = []
 
     def read_from_file(self, fname_base):
         nodesname = fname_base + ".nodes.txt"
