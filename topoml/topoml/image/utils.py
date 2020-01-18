@@ -9,27 +9,26 @@ from skimage.io import imsave
 from topoml.image.feature import gaussian_blur_filter
 
 
-def make_arc_image(image, msc, invert=False):
+def make_arc_image(image, msc,labeled_accuracy=1, invert=False):
     arc_mask_image = np.zeros(image.shape)
+    print("SHAPEEEEE")
+    print(image.shape)
     x = 0 if not invert else 1
     y = 1 if not invert else 0
     for a in msc.arcs:
         points = np.array(a.line)
-        #print("POINTS###########################")
-        #print("LENGTH  ", len(points))
         for point in points:
-            print(point)
-            arc_mask_image[int(point[x]), int(point[y])] = 1
+            arc_mask_image[int(point[x]), int(point[y])] = a.label_accuracy if a.label_accuracy is not None else 1
     return arc_mask_image
 
 
-def make_mc_arc_image(image, msc, invert=False):
+def make_mc_arc_image(image, msc, labeled_accuracy=1, invert=False):
     arc_mask_image = np.zeros(image.shape)
 
     mask_index = 2 if invert else 0
 
-    x = 0 if not invert else 1
-    y = 1 if not invert else 0
+    x = 0 if invert else 1
+    y = 1 if invert else 0
 
     for a in msc.arcs:
         if mask_index not in [
@@ -38,23 +37,23 @@ def make_mc_arc_image(image, msc, invert=False):
         ]:
             points = np.array(a.line)
             for point in points:
-                arc_mask_image[int(point[x]), int(point[y])] = 1
+                arc_mask_image[int(point[x]), int(point[y])] = a.label_accuracy if a.label_accuracy is not None else 1
     return arc_mask_image
 
 
-def make_dilated_arc_image(image, msc, width, invert=False):
+def make_dilated_arc_image(image, msc, width,labeled_accuracy=1, invert=True):
     return morphology.dilation(
-        make_arc_image(image, msc, invert), selem=morphology.disk(width)
+        make_arc_image(image, msc,labeled_accuracy=labeled_accuracy, invert=invert), selem=morphology.disk(width)
     )
 
 
-def make_arc_mask(image, msc, invert=False):
-    arc_mask_image = make_arc_image(image, msc, invert)
+def make_arc_mask(image, msc, labeled_accuracy=1, invert=False):
+    arc_mask_image = make_arc_image(image, msc, labeled_accuracy=labeled_accuracy,invert=invert)
     return np.ma.masked_where(arc_mask_image == 0, arc_mask_image)
 
 
-def make_mc_arc_mask(image, msc, invert=False):
-    arc_mask_image = make_mc_arc_image(image, msc, invert)
+def make_mc_arc_mask(image, msc,labeled_accuracy=1, invert=False):
+    arc_mask_image = make_mc_arc_image(image, msc,labeled_accuracy=labeled_accuracy, invert=invert)
     return np.ma.masked_where(arc_mask_image == 0, arc_mask_image)
 
 
