@@ -26,6 +26,7 @@ class MSCNode:
 class MSCArc:
     def __init(self):
         self.nodes = []
+        self.label_accuracy = None
 
     def __group_xy(self, lst):
         for i in range(0, len(lst), 3):
