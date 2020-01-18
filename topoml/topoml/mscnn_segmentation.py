@@ -310,7 +310,9 @@ class mscnn_segmentation:
         seg_in_arc, seg_out_arcs, seg_pixels = seg_msc_selector.draw_binary_segmentation(seg_img_msc) #write_image(seg_img_msc)
         """
 
-    def construct_geomsc_from_image(self, image_filename ="./data/optic1.tif",  write_path = '.', persistence = 0, blur_sigma = 2, msc = None):
+    def construct_geomsc_from_image(self, image_filename ="./data/optic1.tif",
+                                    write_path = '.', persistence = 0,
+                                    blur_sigma = 2, msc = None, binary=False):
         #selector = ArcSelector(tracer.raw_image, tracer.msc, valley=False)
         
         raw_image = io.imread(image_filename, as_gray=True)
@@ -351,9 +353,17 @@ class mscnn_segmentation:
                                    , ridge = False
                                    , invert=True)
         #seg_msc_selector =  ArcSelector(segmentation.raw_image, segmentation.msc, valley=False, ridge = True)
-        unsup_seg_in_arcs, unsup_seg_out_arcs, unsup_seg_pixels = msc_selector.draw_binary_segmentation(img_msc                                                                        , msc = self.msc                                                                , invert=True
+        if not binary:
+            unsup_seg_in_arcs, unsup_seg_out_arcs, unsup_seg_pixels = msc_selector.draw_segmentation(img_msc                                                                        , msc = self.msc                                                                , invert=True
                                                                                                         , reshape_out=False
                                                                                                         ,dpi = 158)#write_image(img_msc)
-        
+        else:
+            unsup_seg_in_arcs, unsup_seg_out_arcs, unsup_seg_pixels = msc_selector.draw_binary_segmentation(img_msc,
+                                                                                                     msc=self.msc,
+                                                                                                     invert=True
+                                                                                                     , reshape_out=False
+                                                                                                     ,
+                                                                                                     dpi=158)  # write_image(img_msc)
+
         """seg_img_msc =  seg_img.rsplit('.', 1)[0] + '_msc.tif'
         seg_in_arc, seg_out_arcs, seg_pixels = seg_msc_selector.draw_binary_segmentation(seg_img_msc) #write_image(seg_img_msc)"""
