@@ -26,6 +26,8 @@ class MSCNode:
 class MSCArc:
     def __init(self):
         self.nodes = []
+        self.line = []
+        self.label_accuracy = None
 
     def __group_xy(self, lst):
         for i in range(0, len(lst), 2):
@@ -51,6 +53,10 @@ class GeoMSC:
         self.tp_nodes = {}
         # arcs with overlap of true positive and false positive segmentation
         self.tf_arcs = []
+        # value from 0 to 1 of accuracy of arc w.r.t.
+        # ground truth hand segmentation.
+        # 1 := 100% accuracte,  0 := no overlap with labeled segmentation
+        self.arc_accuracies = {}
 
     def read_from_file(self, fname_base):
         nodesname = fname_base + ".nodes.txt"
