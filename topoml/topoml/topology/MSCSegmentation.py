@@ -4,32 +4,26 @@ from skimage import io
 import imageio
 
 from .mscnn_segmentation import mscnn_segmentation
-from .ml.MSCTrainingSet import SupervisedMSC
+from .ml.MSCSample import SupervisedMSC
 from .ui.ArcSelector import ArcSelector
+
+#class with local file paths
+from .ui.LocalSetup import LocalSetup
 
 sys.path.append(os.getcwd())
 
 
-
-paths_for_multivax=""" training_data_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/HW3/datasets/drive/DRIVE/training/images"
-#training_data_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/final_project/results/neuron_msc"
-testing_data_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/HW3/datasets/drive/DRIVE/test/images"
-train_write_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/HW3/datasets/drive/DRIVE/training/" # "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/final_project/results/" #
-test_write_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/HW3/datasets/drive/DRIVE/test/"
-stare_training_data_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/HW3/datasets/stare/images"
-stare_train_write_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/HW3/datasets/stare/"
-"""
+LocalSetup = LocalSetup()
+paths_for_multivax = LocalSetup.paths_for_multivax
 # Paths for Multivax
-project_base_path = "/home/sam/Documents/PhD/Research/GeoMSCxML/"
-training_data_path = os.path.join(project_base_path,"datasets","optics","drive","DRIVE","training","images")
-training_seg_data_path = os.path.join(project_base_path,"datasets","optics","drive","DRIVE","training","1st_manual")
-#training_data_path = "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/final_project/results/neuron_msc"
-testing_data_path = os.path.join(project_base_path,"datasets","optics","drive","DRIVE","test","images")
-train_write_path = os.path.join(project_base_path,"datasets","optics","drive","DRIVE","training")
-# "/Users/multivax/Documents/PhD/4spring19/DeepLearning/DeepLearning/final_project/results/" #
-test_write_path = os.path.join(project_base_path,"datasets","optics","drive","DRIVE","test")
-stare_training_data_path = os.path.join(project_base_path,"datasets","optics","stare","images")
-stare_train_write_path = os.path.join(project_base_path,"datasets","optics","stare")
+project_base_path = LocalSetup.project_base_path
+training_data_path = LocalSetup.training_data_path
+training_seg_data_path  = LocalSetup.training_seg_data_path
+testing_data_path = LocalSetup.testing_data_path
+train_write_path = LocalSetup.train_write_path
+test_write_path = LocalSetup.test_write_path
+stare_training_data_path = LocalSetup.stare_training_data_path
+stare_train_write_path = LocalSetup.stare_train_write_path
 
 class MSCSegmentation:
 
@@ -47,7 +41,6 @@ class MSCSegmentation:
         supMSC = SupervisedMSC(msc=msc, geomsc=geomsc, labeled_segmentation=labeled_segmentation)
         labeled_msc = supMSC.map_labeling(msc=msc, geomsc=geomsc, labeled_segmentation=labeled_segmentation,
                                           invert=invert)
-        self.labeled_msc.append(labeled_msc)
         return labeled_msc
 
 
@@ -118,7 +111,7 @@ class MSCSegmentation:
     # vertices added at edge intersections including ridge lines
     # and not only , min/max
     def geomsc_segment_images(self, persistence_values = [1], blur_sigmas = [3], data_path = '.',
-                              write_path = '.', labeled_segmentation=None, save_binary_seg=False):
+                              write_path = '.', labeled_segmentation=None, label=True, save_binary_seg=False):
         # check needed folders present else make
         if not os.path.exists(os.path.join(write_path, 'raw_images')):
             os.mkdir(os.path.join(write_path, 'raw_images'))
@@ -144,11 +137,12 @@ class MSCSegmentation:
                                                , scale_intensities=False
                                                , augment_channels = [])
 
-                    if labeled_segmentation is None:
+                    if labeled_segmentation is None and label:
                         labeled_segmentation = imageio.imread(os.path.join(training_seg_data_path,seg_images[im_num]))
-
-                    labeled_msc = self.label_msc(geomsc=msc,labeled_segmentation=labeled_segmentation)
-                    mscnn.msc = labeled_msc
+                    if label:
+                        labeled_msc = self.label_msc(geomsc=msc,labeled_segmentation=labeled_segmentation)
+                        mscnn.msc = labeled_msc
+                        msc = labeled_msc
                     # compute geomsc over image
 
                     mscnn.construct_geomsc_from_image(image_filename = os.path.join(data_path,img)
@@ -157,7 +151,8 @@ class MSCSegmentation:
                                                       , blur_sigma = blur_sigma
                                                       ,binary=save_binary_seg)
 
-                    self.labeled_msc.append(msc)
+                    self.msc.append(msc)
+                    msc_segmentations.append(msc)
         return msc_segmentations
 
 
